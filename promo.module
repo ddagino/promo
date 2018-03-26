@@ -1,0 +1,371 @@
+<?php
+/**
+ * @file
+ * n/a
+ */
+
+/**
+ * Promo does not currently appear on content.
+ */
+define('PROMO_INACTIVE', 0);
+
+/**
+ * Promo currently appears on content.
+ */
+define('PROMO_ACTIVE', 1);
+
+define('PROMO_ADMIN_CONTENT_URI', 'admin/content/promo');
+define('PROMO_ADMIN_MANAGE_URI', 'admin/content/promo/manage');
+
+/**
+ * Implements hook_entity_info().
+ */
+function promo_entity_info() {
+  $items = [];
+
+  $items['promo'] = [
+    'label' => t('Promo'),
+    'plural label' => t('Promos'),
+    'entity class' => 'Promo',
+    'controller class' => 'PromoController',
+    'fieldable' => TRUE,
+    'base table' => 'promo',
+    'module' => 'promo',
+    'entity keys' => [
+      'id' => 'pid',
+      'label' => 'title',
+    ],
+    'load hook' => 'promo_load',
+    'static cache' => TRUE,
+    'admin ui' => array(
+      'path' => 'admin/content/promo',
+      'controller class' => 'PromoUIController',
+      'file' => 'promo.admin.inc',
+    ),
+    'label callback' => 'entity_class_label',
+    'uri callback' => 'entity_class_uri',
+    'access callback' => 'promo_access_callback',
+    'bundles' => array(
+      'promo' => array(
+        'label' => 'Promo',
+        'admin' => array(
+          'path' => 'admin/structure/promo/manage',
+          'access arguments' => array('administer promos'),
+        ),
+      ),
+    ),
+    'views controller class' => 'EntityDefaultViewsController',
+  ];
+
+  return $items;
+}
+
+/**
+ * Load promos from the database.
+ *
+ * @param $pids
+ *   An array of promo IDs.
+ *
+ * @return mixed
+ *   An array of promo objects, indexed by promo ID.
+ */
+function promo_load_multiple($pids = array()) {
+  return entity_load('promo', $pids);
+}
+
+/**
+ * Load a single promo.
+ *
+ * @param $pid
+ * @param bool $reset
+ *
+ * @return mixed
+ */
+function promo_load($pid, $reset = FALSE) {
+  $promos = promo_load_multiple(array($pid));
+  return reset($promos);
+}
+
+/**
+ * Implements hook_menu().
+ */
+function promo_menu() {
+  $items = array();
+
+  $items['promo/%promo'] = [
+    'title' => 'Promo',
+    'page callback' => 'promo_view_entity',
+    'page arguments' => array(1),
+    'access callback' => 'promo_access_menu_callback',
+    'access arguments' => array('view', 1),
+    'type' => MENU_CALLBACK,
+  ];
+
+  $items['admin/structure/promo'] = array(
+    'title' => 'Promos',
+    'description' => t('Manage Promo settings.'),
+    'access arguments' => array('administer promo'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+
+  return $items;
+}
+/**
+ * Implements hook_permission().
+ */
+function promo_permission() {
+  return array(
+    'administer promo' => array(
+      'title' => t('Administer Promo'),
+      'description' => t('Allow users to administer Promo entities.'),
+    ),
+    'view promo' => array(
+      'title' => t('View Promo entities'),
+      'description' => t('Allow users to view Promo entities.'),
+    ),
+    'create promo' => array(
+      'title' => t('Create Promo entities'),
+      'description' => t('Allow users to create Promo entities.'),
+    ),
+    'edit promo' => array(
+      'title' => t('Edit Promo entities'),
+      'description' => t('Allow users to edit Promo entities.'),
+    ),
+    'delete promo' => array(
+      'title' => t('Delete Promo entities'),
+      'description' => t('Allow users to delete Promo entities.'),
+    ),
+  );
+}
+
+/**
+ * Access callback for Promo menu.
+ */
+function promo_access_menu_callback($op, $promo = NULL, $account = NULL) {
+  switch ($op) {
+    case 'view':
+      return user_access('view promo', $account);
+
+    case 'create':
+      return user_access('create promo', $account);
+
+    case 'update':
+      return user_access('edit promo', $account);
+
+    case 'delete':
+      return user_access('delete promo', $account);
+  }
+
+  return FALSE;
+}
+
+/**
+ * Access callback for promo.
+ */
+function promo_access_callback() {
+  if (user_is_anonymous() || !user_access('administer promos')) {
+    return FALSE;
+  }
+  return TRUE;
+}
+
+/**
+ * Theme a promo entity as an HTML image link.
+ */
+function theme_promo_markup($variables) {
+  $promo = $variables['promo'];
+  $banner_image = file_load($promo->fid);
+  // @todo Handle the case where a banner_image is missing for some reason.
+  $image_markup = theme('image_style', array('style_name' => 'promo_banner_1', 'path' => $banner_image->uri));
+  return l($image_markup, $promo->url, array('html' => TRUE));
+}
+
+/**
+ * Implements hook_theme().
+ */
+function promo_theme() {
+  $return = [];
+
+  $return['promo_markup'] = [
+    'render element' => 'element',
+    'variables' => array('promo' => NULL),
+  ];
+
+  return $return;
+}
+
+/**
+ * Render a Promo entity.
+ * @todo add proper function.
+ */
+function promo_view_entity($promo) {
+  drupal_set_title($promo->title);
+  $output = theme('promo_markup', array('promo' => $promo));
+  return $output;
+}
+
+/**
+ * Return the rendered markup for a random promo.
+ *
+ * @return string
+ *   The markup for a promo or an empty string if there are no promos.
+ */
+function promo_get_promo_markup() {
+  $promo = _promo_get_random_promo();
+  return !empty($promo) ? promo_view_entity($promo) : '';
+}
+
+/**
+ * Return a random promo entity.
+ *
+ * @return array|mixed
+ *   A promo entity object.
+ */
+function _promo_get_random_promo() {
+  $promos = promo_entity_query();
+  if (count($promos) > 0) {
+    // Pick a random promo from the list of promos entities.
+    shuffle($promos);
+    $return = reset($promos);
+  }
+  else {
+    // There are no promos so return an empty array.
+    $return = array();
+  }
+  return $return;
+}
+
+/**
+ * Query for all promos or only ones matching certain conditions.
+ */
+function promo_entity_query($conditions = array()) {
+  $query = new EntityFieldQuery();
+  $query->entityCondition('entity_type', 'promo');
+
+  foreach ($conditions as $condition_field => $value) {
+    $query->propertyCondition($condition_field, $value);
+  }
+
+  $result = $query->execute();
+
+  $entities = array();
+  if (!empty($result['promo'])) {
+    $entities = entity_load('promo', array_keys($result['promo']));
+  }
+
+  return $entities;
+}
+
+/**
+ * Class Promo.
+ */
+class Promo extends Entity {
+
+  /**
+   * Override defaultUri().
+   */
+  protected function defaultUri() {
+    return array('path' => 'promo/' . $this->identifier());
+  }
+
+  /**
+   * Override defaultLabel().
+   */
+  protected function defaultLabel() {
+    return isset($this->title) ? $this->title : 'new promo';
+  }
+}
+
+/**
+ * Class PromoController.
+ */
+class PromoController extends EntityAPIController {
+  public function save($entity, DatabaseTransaction $transaction = NULL) {
+    if (isset($entity->is_new)) {
+      $entity->created = REQUEST_TIME;
+      global $user;
+      $entity->created_by = $user->uid;
+    }
+    $entity->changed = REQUEST_TIME;
+    // @todo Wrap this in try/catch?
+    return parent::save($entity, $transaction);
+  }
+}
+
+/**
+ * Class PromoUIController.
+ */
+class PromoUIController extends EntityDefaultUIController {
+
+  /**
+   * Override the menu hook for the default ui controller.
+   */
+  public function hook_menu() {
+    $items = parent::hook_menu();
+    $items[$this->path]['title'] = t('Promo');
+    $items[$this->path]['description'] = t('Manage Promos');
+    $items[$this->path]['access callback'] = 'promo_access_callback';
+    $items[$this->path]['access arguments'] = array('administer promo');
+    $items[$this->path]['type'] = MENU_LOCAL_TASK;
+    return $items;
+  }
+
+  /**
+   * Admin form for promos.
+   */
+  public function overviewForm($form, &$form_state) {
+    $form['pager'] = array('#theme' => 'pager');
+
+    $header = array(
+      'pid' => array('data' => t('Promo ID'), 'field' => 'pid'),
+      'title' => array('data' => t('Title'), 'field' => 'title'),
+      'operations' => array('data' => t('Operations'), 'field' => 'operations'),
+    );
+
+    $options = array();
+    $search_term = !empty($_GET['search']) ? $_GET['search'] : NULL;
+
+    $query = new EntityFieldQuery();
+    $query->entityCondition('entity_type', 'promo');
+
+    if (!empty($search_term)) {
+      $query->propertyCondition('title', '%' . $search_term . '%', 'like');
+    }
+    // Check for sort order and sort key.
+    if (!empty($_GET['sort']) && !empty($_GET['order'])) {
+      $sort = strtoupper($_GET['sort']);
+      $order = strtolower($_GET['order']);
+      $order = str_replace(' ', '_', $order);
+      if ($order != 'operations') {
+        $query->propertyOrderBy($order, $sort);
+      }
+    }
+
+    $query->pager(50);
+
+    $result = $query->execute();
+    $promo_results = !empty($result['promo']) ? $result['promo'] : array();
+    $promo_array = !empty($promo_results) ? promo_load_multiple(array_keys($promo_results)) : array();
+    foreach ($promo_array as $pid => $promo) {
+      $options['pid-' . $pid] = array(
+        'pid' => l($promo->pid, "promo/$promo->pid"),
+        'title' => l($promo->title, "promo/$promo->pid"),
+        'operations' =>
+          l(t('View'), 'promo/' . $promo->pid) . ' ' .
+          l(t('Edit'), PROMO_ADMIN_MANAGE_URI . "/$pid", array('query' => array('destination' => PROMO_ADMIN_CONTENT_URI))) . ' ' .
+          l(t('Delete'), PROMO_ADMIN_MANAGE_URI . "/$pid/delete", array('attributes' => array('class' => array('promo-delete-' . $promo->pid), ), 'query' => array('destination' => PROMO_ADMIN_CONTENT_URI))),
+      );
+    }
+
+    $form['entities'] = array(
+      '#type' => 'tableselect',
+      '#header' => $header,
+      '#options' => $options,
+      '#attributes' => array('class' => array('entity-sort-table')),
+      '#empty' => t('There are no promos.'),
+    );
+
+    return $form;
+  }
+
+}

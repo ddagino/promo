@@ -1,0 +1,20 @@
+This is a demo module built as an exercise. It creates a new Promo entity type
+that's primary purpose is to store a URL and an image file. The module provides
+a function to fetch a single promo at random and render it as an HTML <img> tag
+wrapped in an <a> tag.
+
+Useful functions provided by this module:
+
+- promo_get_promo_markup()
+-- Returns the markup (image tag wrapped in link tag) of a random promo.
+-- Usage: $markup = promo_get_promo_markup();
+          print($markup)
+
+
+@TODO
+1) Implement hook_image_default_styles() to remove a hardcoded dependency in
+   theme_promo_markup().
+2) Add support for CTools Plugins and Exportables.
+3) Improve theme process by making better use of render arrays.
+4) Organize files and functions better.
+5) Create tests.

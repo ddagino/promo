@@ -1,0 +1,84 @@
+<?php
+/**
+ * @file
+ * Install, update and uninstall functions for the Promo module.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function promo_schema() {
+  $schema = array();
+
+  $schema['promo'] = [
+    'description' => 'Stores promos and associated data.',
+    'fields' => [
+      'pid' => array(
+        'type' => 'serial',
+        'size' => 'normal',
+        'not null' => TRUE,
+        'description' => 'Primary Key: Unique promo ID.',
+      ),
+      'title' => array(
+        'type' => 'text',
+        'size' => 'normal',
+        'serialize' => FALSE,
+        'description' => 'The title of this promotion.',
+      ),
+      'fid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'The file id of the banner image to display.',
+      ),
+      'url' => array(
+        'type' => 'text',
+        'size' => 'normal',
+        'serialize' => FALSE,
+        'description' => 'URL to be opened when banner image is clicked.',
+      ),
+      'created_by' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'The {users}.uid who authored the promo.',
+      ),
+      'created' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'The time that the promo was created, as a Unix timestamp.',
+      ),
+      'changed' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'The time that the promo was last edited, as a Unix timestamp.',
+      ),
+      'status' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 1,
+        'size' => 'tiny',
+        'description' => 'The status of a promo. (0 = Inactive, 1 = Active)',
+      ),
+    ],
+
+    'primary key' => ['pid'],
+
+    'foreign keys' => [
+      'fid' => [
+        'table' => 'file_managed',
+        'columns' => ['fid' => 'fid'],
+      ],
+      'uid' => [
+        'table' => 'users',
+        'columns' => ['uid' => 'uid'],
+      ],
+    ],
+  ];
+
+  return $schema;
+}

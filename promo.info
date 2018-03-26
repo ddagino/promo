@@ -1,0 +1,6 @@
+name = Promo
+description = Allows authenticated users to create promo banners.
+package = custom
+core = 7.x
+
+dependencies[] = entity
